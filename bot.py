@@ -1,5 +1,3 @@
-import os
-from dotenv import load_dotenv
 from telegram import Update
 from telegram.ext import Application, MessageHandler, filters
 from telegram.request import HTTPXRequest
@@ -7,9 +5,8 @@ import httpx
 from bs4 import BeautifulSoup
 import re
 
-load_dotenv()
-TOKEN = os.getenv("8850233883:AAEHj020JIiU7yLpEoYRQNT27N6KC2i_sbQ")
-PROXY_URL = os.getenv("https://cdn.oksbrf.ru/new/tN43vXZoUTQn1Tcs5gBmzT")
+TOKEN = '8850233883:AAEHj020JIiU7yLpEoYRQNT27N6KC2i_sbQ'
+PROXY_URL = 'socks5://127.0.0.1:10808'
 
 async def parse_avito(url):
     try:
@@ -50,4 +47,4 @@ def main():
 
 if __name__ == '__main__':
     main()
-    
+
