@@ -46,7 +46,13 @@ async def handle_message(update: Update, context):
             await update.message.reply_text(result)
 
 def main():
-    request = HTTPXRequest(proxy=PROXY_URL)
+    request = HTTPXRequest(
+        proxy=PROXY_URL,
+        connect_timeout=15.0,
+        read_timeout=40.0,
+        write_timeout=15.0,
+        pool_timeout=15.0,
+    )
     app = Application.builder().token(TOKEN).request(request).build()
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     app.run_polling(allowed_updates=Update.ALL_TYPES, timeout=30)
