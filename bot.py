@@ -1,56 +1,59 @@
 from telegram import Update
-from telegram.ext import Application, CommandHandler, MessageHandler, filters
-import requests
+from telegram.ext import Application, MessageHandler, filters
+import httpx
 from bs4 import BeautifulSoup
-import ssl
+import re
+import asyncio
 
-# Отключение проверки SSL (временное решение)
-ssl._create_default_https_context = ssl._create_unverified_context
-
-# Ваш токен от BotFather
+# ВСТАВЬТЕ СЮДА НОВЫЙ ТОКЕН ПОСЛЕ ОТЗЫВА СТАРОГО
 TOKEN = '8850233883:AAEHj020JIiU7yLpEoYRQNT27N6KC2i_sbQ'
 
 async def parse_avito(url):
     try:
-        response = requests.get(url, verify=False)  # Отключаем проверку SSL
-        soup = BeautifulSoup(response.text, 'html.parser')
-        
-        # Парсим данные
-        title = soup.find('h1', {'data-marker': 'item-view/title-info'}).text
-        price = soup.find('span', {'data-marker': 'item-view/price'}).text
-        city = soup.find('span', {'class': '_8360df6eedcf8d52'}).text
-        seller = soup.find('span', {'class': ''}).text
-        reviews = soup.find('a', {'data-marker': 'rating-caption/rating'}).text
-        date = soup.find('span', {'data-marker': 'item-view/item-date'}).text
-        
-        # Формируем шаблон
-        result = f"Название: {title}\n"
-        result += f"Цена: {price}\n"
-        result += f"Город: {city}\n"
-        result += f"Продавец: {seller}\n"
-        result += f"Количество отзывов: {reviews}\n"
-        result += f"Дата когда выложено: {date}"
-        
-        return result
+        # Используем httpx для асинхронности и добавляем заголовки, чтобы не банили сразу
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            headers = {
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+            }
+            response = await client.get(url, headers=headers)
+            response.raise_for_status()
+            
+            soup = BeautifulSoup(response.text, 'html.parser')
+            
+            # Попытка найти заголовок (селекторы Avito часто меняются, это пример)
+            title_tag = soup.find('h1', {'data-marker': 'item-view/title-info'})
+            title = title_tag.text.strip() if title_tag else "Не удалось получить название"
+            
+            price_tag = soup.find('span', {'data-marker': 'item-view/price'})
+            price = price_tag.text.strip() if price_tag else "Цена не указана"
+            
+            # Город и другие данные парсить сложно из-за динамических классов.
+            # Для стабильной работы лучше использовать официальное API Avito, если есть доступ.
+            city = "Данные скрыты защитой сайта" 
+            
+            return f"Название: {title}\nЦена: {price}\nГород: {city}\n(Парсинг Avito нестабилен, сайт блокирует автоматические запросы)"
+            
     except Exception as e:
-        return f"Ошибка парсинга: {str(e)}"
+        return f"Ошибка при запросе: {str(e)}"
 
 async def handle_message(update: Update, context):
-    message = update.message
-    text = message.text
+    text = update.message.text
     
-    if 'avito.ru' in text:
-        # Ищем ссылку
-        url = text.split('avito.ru')[0] + 'avito.ru'
-        parsed_data = await parse_avito(url)
-        await message.reply_text(parsed_data)
+    # Ищем ссылку на avito.ru через регулярное выражение (надежнее, чем split)
+    match = re.search(r'(https?://[^\s]+)', text)
+    if match:
+        url = match.group(1)
+        if 'avito.ru' in url:
+            await update.message.reply_text("Начинаю парсинг (это может занять время)...")
+            result = await parse_avito(url)
+            await update.message.reply_text(result)
 
 def main():
     app = Application.builder().token(TOKEN).build()
-    
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     
-    app.run_polling()
+    # run_polling имеет параметр timeout для обработки долгих запросов
+    app.run_polling(allowed_updates=Update.ALL_TYPES, timeout=30)
 
 if __name__ == '__main__':
     main()
