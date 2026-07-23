@@ -5,6 +5,11 @@ import httpx
 from bs4 import BeautifulSoup
 import re
 
+import logging
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 TOKEN = '8850233883:AAEHj020JIiU7yLpEoYRQNT27N6KC2i_sbQ'
 PROXY_URL = 'socks5://127.0.0.1:10808'
 
@@ -30,6 +35,7 @@ async def parse_avito(url):
         return f"Ошибка при запросе: {str(e)}"
 
 async def handle_message(update: Update, context):
+    logger.info(f"Получено сообщение: {update.message.text}")
     text = update.message.text
     match = re.search(r'(https?://[^\s]+)', text)
     if match:
